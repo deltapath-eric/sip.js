@@ -62,12 +62,12 @@ exports.calculateDigest = calculateDigest;
 var nonceSalt = rbytes();
 function generateNonce(tag, timestamp) {
   var ts = (timestamp || new Date()).toISOString();
-  return new Buffer([ts, kd(ts, tag, nonceSalt)].join(';'), 'ascii').toString('base64');
+  return new Buffer.from([ts, kd(ts, tag, nonceSalt)].join(';'), 'ascii').toString('base64');
 }
 exports.generateNonce = generateNonce;
 
 function extractNonceTimestamp(nonce, tag) {
-  var v = new Buffer(nonce, 'base64').toString('ascii').split(';');
+  var v = new Buffer.from(nonce, 'base64').toString('ascii').split(';');
   if(v.length != 2)
     return;
 
@@ -121,7 +121,7 @@ exports.challenge = function(ctx, rs) {
       scheme: 'Digest',
       realm: q(ctx.realm),
       qop: q(ctx.qop),
-      algorithm: q(ctx.algoritm),
+      algorithm: ctx.algoritm,
       nonce: q(ctx.nonce),
       opaque: q(ctx.opaque)
     }
@@ -222,7 +222,7 @@ exports.signRequest = function (ctx, rq, rs, creds) {
     nonce: q(ctx.nonce), 
     uri: q(ctx.uri),
     nc: nc,
-    algorithm: q(ctx.algorithm),
+    algorithm: ctx.algorithm,
     cnonce: q(ctx.cnonce),
     qop: ctx.qop,
     opaque: q(ctx.opaque),
