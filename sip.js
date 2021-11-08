@@ -198,7 +198,10 @@ function parse(data) {
     var name = unescape(r[1]).toLowerCase();
     name = compactForm[name] || name;
 
-    m.headers[name] = (parsers[name] || parseGenericHeader)({s:r[2], i:0}, m.headers[name]);
+    try {
+      m.headers[name] = (parsers[name] || parseGenericHeader)({s:r[2], i:0}, m.headers[name]);
+    }
+    catch(e) {}
   }
 
   return m;
@@ -404,7 +407,7 @@ function makeResponse(rq, status, reason, extension) {
 exports.makeResponse = makeResponse;
 
 function clone(o, deep) {
-  if(typeof o === 'object') {
+  if(o !== null && typeof o === 'object') {
     var r = Array.isArray(o) ? [] : {};
     Object.keys(o).forEach(function(k) { r[k] = deep ? clone(o[k], deep): o[k]; });
     return r;
@@ -1348,6 +1351,7 @@ exports.create = function(options, callback) {
   
   var transaction = makeTransactionLayer(options, transport.open.bind(transport));
   var hostname = options.publicAddress || options.address || options.hostname || os.hostname();
+  var port = options.port || 5060;
   var rbytes = crypto.randomBytes(20);
 
   function encodeFlowToken(flow) {
@@ -1375,12 +1379,18 @@ exports.create = function(options, callback) {
       else {
         var hop = parseUri(m.uri);
 
-        if(typeof m.headers.route === 'string')
-          m.headers.route = parsers.route({s: m.headers.route, i:0});
- 
+        if(typeof m.headers.route === 'string') {
+          try {
+            m.headers.route = parsers.route({s: m.headers.route, i:0});
+          }
+          catch(e) {
+            m.headers.route = undefined;
+          }
+        }
+
         if(m.headers.route && m.headers.route.length > 0) {
           hop = parseUri(m.headers.route[0].uri);
-          if(hop.host === hostname) {
+          if(hop.host === hostname && hop.port === port) {
             m.headers.route.shift();
           } 
           else if(hop.params.lr === undefined ) {
@@ -1391,7 +1401,7 @@ exports.create = function(options, callback) {
         }
 
         (function(callback) {
-          if(hop.host === hostname) {
+          if(hop.host === hostname && hop.port === port) {
             var flow = decodeFlowToken(hop.user);
             callback(flow ? [flow] : []);
           }
